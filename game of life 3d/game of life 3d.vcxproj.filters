@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="game of life 3d.cpp">
+    <ClCompile Include="Cellular Automata 3D.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
