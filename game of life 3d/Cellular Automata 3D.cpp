@@ -1,9 +1,10 @@
 // game of life 3d.cpp
+// created by Adam Ullmann (nickname: AlmondAdam)
 
 #include "raylib.h"
 #include <math.h>
 #include <iostream>
-//test
+
 const int screenWidth = 1600;
 const int screenHeight = 950;
 const int cellSize = 1;
@@ -171,7 +172,7 @@ int main() {
 
                         // the rules
                         if (grid[x][y][z]) {
-                            if (liveNeighbors == 13 || liveNeighbors == 2) {
+                            if (liveNeighbors == 6 || liveNeighbors == 11) {
                                 nextGrid[x][y][z] = true;
                             }
                             else {
@@ -230,7 +231,7 @@ int main() {
                                 Color cellColor = Color{ unsigned char(30 * gradient), unsigned char(100 * gradient), unsigned char(255 * gradient), 255 };
 
                                 DrawCube(cubePosition, cellSize, cellSize, cellSize, cellColor);
-                                DrawCubeWires(cubePosition, cellSize, cellSize, cellSize, BLACK);
+                                //DrawCubeWires(cubePosition, cellSize, cellSize, cellSize, BLACK);
                             }
                         }
                     }
