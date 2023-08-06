@@ -1,13 +1,16 @@
 // game of life 3d.cpp
-// created by Adam Ullmann (nickname: AlmondAdam)
+// by Adam Ullmann
 
 #include "raylib.h"
+#include "raymath.h"
+#include "rlgl.h"
 #include <math.h>
 #include <iostream>
+#include <vector>
 
 const int screenWidth = 1600;
 const int screenHeight = 950;
-const int cellSize = 1;
+const float cellSize = 1.0f;
 const int gridWidth = 50;
 const int gridHeight = 50;
 const int gridDepth = 50;
@@ -43,28 +46,47 @@ float CalculateGradient(int x, int y, int z) {
         (y - centerY) * (y - centerY) +
         (z - centerZ) * (z - centerZ));
 
-    // Adjust the brightness gradient based on the maximum distance in the grid
     float maxDistance = sqrtf(centerX * centerX + centerY * centerY + centerZ * centerZ);
 
     return distance / maxDistance;
 }
 
+bool IsCubeInFrustum(const Vector3& position, float size, const Matrix& projview) {
+    Vector4 planes[6];
+
+    // Extract frustum planes from the combined projection and view matrix
+    planes[0] = { projview.m3 + projview.m0, projview.m7 + projview.m4, projview.m11 + projview.m8, projview.m15 + projview.m12 }; // Left
+    planes[1] = { projview.m3 - projview.m0, projview.m7 - projview.m4, projview.m11 - projview.m8, projview.m15 - projview.m12 }; // Right
+    planes[2] = { projview.m3 + projview.m1, projview.m7 + projview.m5, projview.m11 + projview.m9, projview.m15 + projview.m13 }; // Bottom
+    planes[3] = { projview.m3 - projview.m1, projview.m7 - projview.m5, projview.m11 - projview.m9, projview.m15 - projview.m13 }; // Top
+    planes[4] = { projview.m3 + projview.m2, projview.m7 + projview.m6, projview.m11 + projview.m10, projview.m15 + projview.m14 }; // Near
+    planes[5] = { projview.m3 - projview.m2, projview.m7 - projview.m6, projview.m11 - projview.m10, projview.m15 - projview.m14 }; // Far
+
+    // Check against the frustum planes
+    for (int i = 0; i < 6; i++) {
+        Vector3 normal = { planes[i].x, planes[i].y, planes[i].z };
+        float distance = planes[i].w;
+        float distanceToCenter = Vector3DotProduct(normal, position) + distance;
+        if (distanceToCenter < -size * 250.0f )
+            return false;
+    }
+
+    return true;
+}
+
+
+
+int min(int a, int b) {
+    return (a < b) ? a : b;
+}
+
 int main() {
+
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight, "Cellular Automata 3D");   // initialization
     unsigned int targetFPS = 60;
     SetTargetFPS(targetFPS);
-
-    SetConfigFlags(FLAG_MSAA_4X_HINT);
-    Vector3 lightPosition = { 100.0f, 100.0f, 100.0f };
-    Color lightColor = WHITE;
-    float ambientIntensity = 0.2f;
-    float diffuseIntensity = 0.8f;
-
-    /*camera.position = {screenWidth / 2.0f, screenHeight / 2.0f, -screenWidth};
-    camera.target = { screenWidth / 2.0f, screenHeight / 2.0f, 0 };
-    camera.up = { 0.0f, 1.0f, 0.0f };
-    camera.fovy = 90.0f;
-    camera.projection = CAMERA_PERSPECTIVE;*/
+    rlEnableBackfaceCulling();
 
     Camera3D camera = { 0 };
     Vector3 position = { 85.0f, 85.0f, 85.0f };
@@ -76,7 +98,7 @@ int main() {
     camera.fovy = 60.0f;                                
     camera.projection = CAMERA_PERSPECTIVE;             
 
-    // we set a few cells as alive
+    // arbitrary setting of live cells (we will change this later)
     grid[gridWidth / 2][gridHeight / 2][gridDepth / 2] = true;
     grid[gridWidth / 2 + 1][gridHeight / 2][gridDepth / 2] = true;
     grid[gridWidth / 2][gridHeight / 2 + 1][gridDepth / 2] = true;
@@ -87,21 +109,27 @@ int main() {
     grid[gridWidth / 2 + 1][gridHeight / 2 + 1][gridDepth / 2 + 1] = true;
 
 
+
     float cameraAngleX = 0.0f;
     float cameraAngleY = 0.0f;
     float cameraZoom = 150.0f;
 
     bool drawCubes = true;
+    bool drawWires = false;
     bool pause = false;
 
+    
     // game loop
     while (!WindowShouldClose()) {
-
+        // INPUT
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            drawCubes = !drawCubes; // Toggle the state
+            drawCubes = !drawCubes; 
+        }
+        if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+            drawWires = !drawWires;
         }
         if (IsKeyPressed(KEY_SPACE)) {
-            pause = !pause; // Toggle the state
+            pause = !pause; 
         }
         if (IsKeyDown(KEY_UP) && targetFPS < 240) {
             targetFPS += 1;
@@ -112,7 +140,7 @@ int main() {
             SetTargetFPS(targetFPS);
         }
 
-        UpdateCamera(&camera);
+        //UpdateCamera(&camera);
 
         Vector2 mouseDelta = GetMouseDelta();   // mouse movement input for camera control
         cameraAngleX += mouseDelta.x * 0.1f;
@@ -136,16 +164,18 @@ int main() {
         //camera.up.y = sinf(DEG2RAD * (cameraAngleY + 90.0f));
         //camera.up.z = sinf(DEG2RAD * cameraAngleX) * cosf(DEG2RAD * (cameraAngleY + 90.0f));
 
-        // mouse wheel movement to control zoom
-        int mouseWheelMove = -GetMouseWheelMove();
+        float mouseWheelMove = -GetMouseWheelMove();      // zoom controls
         cameraZoom += mouseWheelMove * 5.0f;
         if (cameraZoom < 1.0f)
             cameraZoom = 1.0f;
 
-        UpdateCamera(&camera);
+        //UpdateCamera(&camera);
 
 
         if (!pause) {
+
+
+
 
             // update
             for (int z = 0; z < gridDepth; z++) {
@@ -153,7 +183,7 @@ int main() {
                     for (int x = 0; x < gridWidth; x++) {
                         int liveNeighbors = 0;
 
-                        // check the 26 neighboring cells
+                        // check the 26 neighboring cells (it is constant even though it looks really bad)
                         for (int dz = -1; dz <= 1; dz++) {
                             for (int dy = -1; dy <= 1; dy++) {
                                 for (int dx = -1; dx <= 1; dx++) {
@@ -170,7 +200,7 @@ int main() {
                             }
                         }
 
-                        // the rules
+                        // rules (hardcoded for now)
                         if (grid[x][y][z]) {
                             if (liveNeighbors == 6 || liveNeighbors == 11) {
                                 nextGrid[x][y][z] = true;
@@ -190,9 +220,8 @@ int main() {
                     }
                 }
             }
-
             // next generation
-            for (int z = 0; z < gridDepth; z++) {
+            for (int z = 0; z < gridDepth; z++) {           
                 for (int y = 0; y < gridHeight; y++) {
                     for (int x = 0; x < gridWidth; x++) {
                         grid[x][y][z] = nextGrid[x][y][z];
@@ -200,16 +229,14 @@ int main() {
                 }
             }
         }
-        // Draw
+        // start drawing section
         
             BeginDrawing();
 
             ClearBackground(RAYWHITE);
-
-            DrawFPS(2, 2);
-
+            
             BeginMode3D(camera);
-
+            
             Vector3 positions2 = { gridWidth / 2, gridHeight / 2, gridDepth / 2 };
             DrawCubeWires(positions2, gridWidth, gridHeight, gridDepth, BLACK);
 
@@ -217,44 +244,53 @@ int main() {
             //Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };          // red dot on origin for debugging
             //DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
 
-            
-                // Draw the cells
-            if (drawCubes) {
+            Matrix projview = GetCameraMatrix(camera);
+            //OctreeNode* octreeRoot = BuildOctree(0, 0, 0, gridWidth, gridHeight, gridDepth);
+                // drawing of cells
+            int shadowIntensities[gridWidth][gridDepth] = {};
                 for (int z = 0; z < gridDepth; z++) {
                     for (int y = 0; y < gridHeight; y++) {
                         for (int x = 0; x < gridWidth; x++) {
                             if (grid[x][y][z]) {
                                 Vector3 cubePosition = { x * cellSize, y * cellSize, z * cellSize };
-
-                                // calculates the gradient (it is darkest on the inside)
-                                float gradient = CalculateGradient(x, y, z);
-                                Color cellColor = Color{ unsigned char(30 * gradient), unsigned char(100 * gradient), unsigned char(255 * gradient), 255 };
-
-                                DrawCube(cubePosition, cellSize, cellSize, cellSize, cellColor);
-                                //DrawCubeWires(cubePosition, cellSize, cellSize, cellSize, BLACK);
+ 
+                                if (IsCubeInFrustum(cubePosition, cellSize, projview)) {
+                                        float gradient = CalculateGradient(x, y, z);
+                                        Color cellColor = Color{ unsigned char(30 * gradient), unsigned char(100 * gradient), unsigned char(255 * gradient), 255 };
+                                        if (drawCubes) {
+                                            DrawCube(cubePosition, cellSize, cellSize, cellSize, cellColor);
+                                        }
+                                        if (drawWires) {
+                                            DrawCubeWires(cubePosition, cellSize, cellSize, cellSize, BLACK);
+                                        }
+                                        shadowIntensities[x][z] += 15;
+                                }
                             }
                         }
                     }
                 }
-            }
+                
+                
             
-            for (int z = 0; z < gridDepth; z++) {       // draws the shadow squares beneath the cubes
-                for (int y = 0; y < gridHeight; y++) {
+                for (int z = 0; z < gridDepth; z++) {
                     for (int x = 0; x < gridWidth; x++) {
-                        if (grid[x][y][z]) {
+                        if (shadowIntensities[x][z] > 0) {
                             Vector3 shadowPosition = { x * cellSize, 0.0f, z * cellSize };
-                            DrawCube(shadowPosition, cellSize, 0.0f, cellSize, Color{ 0, 0, 0, 50 });
+                            DrawCube(shadowPosition, cellSize, 0.0f, cellSize, Color{ 0, 0, 0, (unsigned char)min(shadowIntensities[x][z], 255)});
                         }
                     }
                 }
-            }
+                
+      
+                
+                        
 
         
         //std::cout << std::endl;
-        
+                //UnloadRenderTexture(offscreenFramebuffer);
 
         EndMode3D();
-
+        DrawFPS(2, 2);
         EndDrawing();
         //end of draw
     }
