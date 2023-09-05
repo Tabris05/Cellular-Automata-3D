@@ -1,4 +1,7 @@
 # Cellular Automata 3D
+
+![Cellular Automata 3D Image](https://github.com/AdamUllmann/Cellular-Automata-3D/blob/master/Screenshot%20Showcasing%20Graphical%20Improvements%20%26%20AA.png)
+
 A small personal project, simulating the behavior of cellular automata in 3-dimensional space, with hardcoded rules. I hope to add an interface for user-input simulation rules.
 
 ## Features:
