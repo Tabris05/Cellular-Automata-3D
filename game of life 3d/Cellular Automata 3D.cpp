@@ -1,9 +1,7 @@
 // game of life 3d.cpp
 // by Adam Ullmann
 
-#include "raylib.h"
-#include "raymath.h"
-#include "rlgl.h"
+#include <rlvk/rlvk.hpp>
 #include <math.h>
 #include <iostream>
 #include <vector>

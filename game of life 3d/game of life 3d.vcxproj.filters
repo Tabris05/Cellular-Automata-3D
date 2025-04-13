@@ -18,5 +18,19 @@
     <ClCompile Include="Cellular Automata 3D.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="include\rlvk\rlvk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="include\rlvk\volk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\rlvk\rldefs.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rlvk\rlvk.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
